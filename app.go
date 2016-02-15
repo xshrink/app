@@ -83,6 +83,8 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var files []string
+		var names []string
+		var dirs []string
 		//copy each part to destination.
 		for {
 			part, err := reader.NextPart()
@@ -94,10 +96,13 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 			if part.FileName() == "" {
 				continue
 			}
+			names = append(names, part.FileName())
 			tmp_dir, _ := ioutil.TempDir(os.TempDir(), part.FileName())
+			dirs = append(dirs, tmp_dir)
 			tmp_file := fmt.Sprintf("%s/%s", tmp_dir, part.FileName())
 			dst, err :=  os.Create(tmp_file)
 			files = append(files, tmp_file)
+			
 			defer dst.Close()
 			
 			if err != nil {
@@ -112,10 +117,21 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		}
 		//display success message.
-		display(w, "upload", "success")
-		for _,z := range files {
-			fmt.Println(z)
+		//var t string
+		var final string
+		cmd := "pngquant/pngquant"
+		for i,z := range files {
+			//u := fmt.Sprintf("--ext=.png.x")
+			if err := exec.Command(cmd, "--quality=60-90", z, "--ext=.png.x").Run(); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			final += fmt.Sprintf("%s/%s.x", dirs[i], names[i])
+			//t += fmt.Sprintf("%s ", z)
+			//fmt.Fprintf(w, 
 		}
+		//display(w, "upload", final)
+		fmt.Fprintf(w, final)		
 		//os.RemoveAll(tmp_dir)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
